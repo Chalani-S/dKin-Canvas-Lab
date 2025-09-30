@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Room · dKin Canvas Lab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body>
+  <section class="hero small">
+    <div class="hero-inner">
+      <h1>dKin Canvas Lab</h1>
+      <p>Live collaboration • Save • Load • PNG Export</p>
+    </div>
+  </section>
+
+  <header class="topbar">
+    <div class="left">
+      <a class="brand" href="/">← Home</a>
+      <span class="room-tag" id="roomTag"></span>
+      <span id="sessionBadge" class="badge">Not logged in</span>
+      <span id="peersSummary" class="muted small"></span>
+      <div id="avatars" class="avatars"></div>
+    </div>
+    <div class="right">
+      <button id="logout" class="btn">Logout</button>
+
+      <input id="name" class="input sm" placeholder="Your name" />
+      <input id="color" type="color" class="color" />
+      <select id="size" class="input sm">
+        <option value="2">2px</option>
+        <option value="4" selected>4px</option>
+        <option value="8">8px</option>
+        <option value="12">12px</option>
+      </select>
+      <button id="save" class="btn">Save</button>
+      <button id="open" class="btn">Open…</button>
+      <button id="export" class="btn">Export PNG</button>
+      <button id="clear" class="btn">Clear</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="canvas-wrap">
+      <canvas id="board" width="1200" height="720"></canvas>
+      <canvas id="overlay" width="1200" height="720"></canvas>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div>
+      <div class="muted small">Peers in this room:</div>
+      <div id="peers" class="peers"></div>
+    </div>
+    <div>
+      <div class="muted small">Active rooms (global):</div>
+      <div id="roomsMonitor" class="rooms small"></div>
+    </div>
+    <span id="status" class="muted"></span>
+  </footer>
+
+  <script type="module" src="/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>dKin Canvas Lab · Manual (How it Works + How to Build It)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/styles.css" />
+    <style>
+        /* Page-specific tweaks layered on top of styles.css */
+        .doc {
+            margin: 0 auto;
+            width: min(960px, 92vw);
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 1.25rem 1.25rem 2rem;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, .05);
+            margin-top: -60px;
+        }
+
+        .doc h2 {
+            margin-top: 1.25rem;
+        }
+
+        .doc h3 {
+            margin-top: 1.0rem;
+        }
+
+        .toc {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            margin: .5rem 0 1rem;
+        }
+
+        .toc a {
+            border: 1px solid #e5e7eb;
+            padding: .25rem .5rem;
+            border-radius: 999px;
+            text-decoration: none;
+            color: #111;
+            background: #fff;
+        }
+
+        .toc a:hover {
+            border-color: #cbd5e1;
+        }
+
+        .kbd {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 0 .35rem;
+        }
+
+        .callout {
+            background: #f8fafc;
+            border-left: 4px solid #0ea5e9;
+            padding: .6rem .75rem;
+            border-radius: 8px;
+        }
+
+        .warn {
+            background: #fff7ed;
+            border-left: 4px solid #fb923c;
+        }
+
+        .api {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: .75rem;
+        }
+
+        code,
+        pre {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.92rem;
+        }
+
+        pre {
+            background: #0b1020;
+            color: #e5e7eb;
+            padding: .9rem;
+            border-radius: 10px;
+            overflow: auto;
+        }
+
+        .pill {
+            display: inline-block;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            padding: .1rem .5rem;
+            font-size: .85rem;
+            color: #6b7280;
+        }
+
+        .top-links {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .grid {
+            display: grid;
+            gap: .75rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        @media (max-width: 820px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <section class="hero small">
+        <div class="hero-inner">
+            <h1>dKin Canvas Lab</h1>
+            <p>User Manual · Developer Wiki · Implementation Guide</p>
+        </div>
+    </section>
+
+    <main class="doc">
+        <div class="top-links">
+            <a class="btn" href="/">← Home</a>
+            <a class="btn" href="/room/demo" target="_blank">Open Demo Room</a>
+            <a class="btn" href="/docs" target="_blank">API JSON</a>
+            <span class="pill">v1.0</span>
+        </div>
+
+        <h2 id="overview">Overview</h2>
+        <p>
+            This project implements a responsive, real-time, multi-user drawing app using
+            <strong>HTML5 Canvas</strong> for advanced interaction, <strong>Yjs</strong> (CRDT) over WebSockets for live
+            sync,
+            expressive <strong>UI styling & interactions</strong>, an <strong>Express</strong> server with ≥10 routes,
+            JSON-based drawing data, <strong>SQLite</strong> storage, and demo <strong>auth</strong> (bcrypt +
+            sessions).
+        </p>
+
+        <h3>Assignment checklist → where each requirement is covered</h3>
+        <ul>
+            <li><strong>(1) Advanced HTML5 element:</strong> Canvas with freehand pen + presence cursors (see <a
+                    href="#canvas-collab">Canvas & Live Sync</a>).</li>
+            <li><strong>(2) Extended UI styling/interaction:</strong> responsive layout, parallax hero, chips, avatars,
+                media queries (see <a href="#ui">UI & Responsiveness</a>).</li>
+            <li><strong>(3) Complex routing & error handling:</strong> auth-gated rooms, REST API, WS upgrade, Zod
+                validation, 404/500 handlers (see <a href="#routing">Routing & Errors</a>).</li>
+            <li><strong>(4) Dynamic content as JSON:</strong> strokes model serialized to JSON; load/save from server
+                (see <a href="#json-format">Drawing JSON</a>).</li>
+            <li><strong>(5) Alternate storage:</strong> SQLite schema + CRUD endpoints (see <a href="#storage">Storage
+                    (SQLite)</a>).</li>
+            <li><em>Optional auth:</em> bcrypt-hashed passwords + express-session (see <a href="#auth">Auth</a>).</li>
+        </ul>
+
+        <div class="toc">
+            <a href="#quickstart">Quick Start</a>
+            <a href="#structure">Project Structure</a>
+            <a href="#canvas-collab">Canvas & Live Sync</a>
+            <a href="#ui">UI & Responsiveness</a>
+            <a href="#routing">Routing & Errors</a>
+            <a href="#json-format">Drawing JSON</a>
+            <a href="#storage">Storage (SQLite)</a>
+            <a href="#auth">Auth (bcrypt + sessions)</a>
+            <a href="#api">API (with curl)</a>
+            <a href="#flow">End-to-End Flow</a>
+            <a href="#build-it">Build It From Scratch</a>
+            <a href="#security">Security & Production Notes</a>
+            <a href="#troubleshoot">Troubleshooting</a>
+            <a href="#faq">FAQ</a>
+        </div>
+
+        <h2 id="quickstart">Quick Start (User)</h2>
+        <ol>
+            <li>Open <a href="/">Home</a>, <strong>register</strong> or <strong>log in</strong>.</li>
+            <li>Enter a room ID (e.g. <em>studio-123</em>) and click <strong>Join room</strong>.</li>
+            <li>Share the room ID with a friend; draw together in real time.</li>
+            <li>Click <strong>Save</strong> to persist (requires login), <strong>Open…</strong> to load, or
+                <strong>Export PNG</strong>.</li>
+        </ol>
+        <div class="callout">
+            <strong>Two users on one computer?</strong> Use <a href="http://localhost:3000/">localhost</a> for user A
+            and
+            <a href="http://127.0.0.1:3000/">127.0.0.1</a> for user B — they keep separate cookies.
+        </div>
+
+        <h2 id="structure">Project Structure</h2>
+        <pre>
+node_server_template/
+  server.js            ← Express + WS + SQLite + auth + routes
+  drawings.sqlite      ← created on first save (SQLite DB)
+  public/
+    index.html         ← Home: login/register + join room
+    room.html          ← Canvas page (auth-gated)
+    manual.html        ← This document (wiki/tutorial)
+    styles.css         ← Shared styles + responsive rules
+    app.js             ← Client logic: canvas, Yjs sync, UI</pre>
+
+        <h2 id="canvas-collab">Canvas & Live Sync (HTML5 + Yjs over WebSockets)</h2>
+        <div class="grid">
+            <div>
+                <h3>Key ideas</h3>
+                <ul>
+                    <li>Each room has a Yjs <code>Doc</code> with an array <code>ystrokes</code>.</li>
+                    <li>On pointer up, the client appends a <em>stroke object</em> to <code>ystrokes</code>.</li>
+                    <li>All clients observe <code>ystrokes</code> and re-render the canvas.</li>
+                    <li><strong>Awareness</strong> broadcasts presence (username, color, cursor position).</li>
+                </ul>
+            </div>
+            <div>
+                <h3>Client (excerpt)</h3>
+                <pre>// public/app.js
+import * as Y from "yjs";
+import { WebsocketProvider } from "y-websocket";
+const provider = new WebsocketProvider(`${ws}://${host}/yjs/${roomId}`, roomId, new Y.Doc());
+const ydoc = provider.doc;
+const ystrokes = ydoc.getArray("strokes");
+
+// add a stroke on pointer up
+ydoc.transact(() => ystrokes.push([{
+  tool:"pen", color: colorEl.value, size: Number(sizeEl.value), points
+}]));
+
+// redraw when strokes change
+ystrokes.observe(() => { /* clear + draw all strokes */ });
+
+// awareness: show live cursors & peers
+provider.awareness.setLocalState({ name, color, cursor });</pre>
+            </div>
+        </div>
+        <h3>Responsive accuracy</h3>
+        <p>
+            The canvas has fixed internal pixels (1200×720) but scales via CSS. Pointer coordinates are mapped back to
+            the
+            internal space using the element’s bounding rect to keep drawings aligned across devices.
+        </p>
+        <pre>// map client pixels → canvas internal pixels
+function getXY(e){
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width;
+  const scaleY = canvas.height / r.height;
+  return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+}</pre>
+
+        <h2 id="ui">UI & Responsiveness (Styling & Interactions)</h2>
+        <ul>
+            <li>Clean controls, avatars, “chips” suggestions, and a parallax hero section.</li>
+            <li>Media queries at <code>900px</code>, <code>700px</code>, and <code>480px</code> for layout changes.</li>
+            <li>Canvas wrapper uses <code>aspect-ratio: 16/9</code>; canvases stretch to fit while internal pixels stay
+                fixed.</li>
+            <li>Presence list filters out placeholders, showing only real usernames (like Google Docs).</li>
+        </ul>
+
+        <h2 id="routing">Routing & Errors (≥10 routes, auth-gated room)</h2>
+        <div class="grid">
+            <div>
+                <h3>Pages</h3>
+                <ul>
+                    <li><code>GET /</code> → Home (login/register + join)</li>
+                    <li><code>GET /room/:id</code> → <em>auth-gated</em> Room</li>
+                    <li><code>GET /manual</code> → Manual (this page)</li>
+                    <li><code>GET /docs</code> → API JSON summary</li>
+                </ul>
+                <h3>Auth</h3>
+                <ul>
+                    <li><code>GET /auth/me</code> (no-store)</li>
+                    <li><code>POST /auth/register</code>, <code>/auth/login</code>, <code>/auth/logout</code></li>
+                </ul>
+            </div>
+            <div>
+                <h3>REST API</h3>
+                <ul>
+                    <li><code>GET /api/drawings</code></li>
+                    <li><code>POST /api/drawings</code> <em>(auth)</em></li>
+                    <li><code>GET /api/drawings/:id</code></li>
+                    <li><code>PUT /api/drawings/:id</code> <em>(auth)</em></li>
+                    <li><code>DELETE /api/drawings/:id</code> <em>(auth)</em></li>
+                    <li><code>POST /api/drawings/:id/png</code> <em>(auth)</em></li>
+                    <li><code>GET /api/stats</code>, <code>GET /api/rooms</code> (no-store)</li>
+                </ul>
+            </div>
+        </div>
+        <p>
+            Error handling uses a global 404 and 500 handler. Payloads are validated with <strong>Zod</strong> before
+            writes; invalid
+            requests return <code>400</code> with issue details.
+        </p>
+
+        <h2 id="json-format">Drawing JSON (Dynamic Content)</h2>
+        <p>Drawings are serialized to JSON when saving; loading replays strokes into the Yjs array:</p>
+        <pre>{
+  "title": "Alice",
+  "size": { "w": 1200, "h": 720 },
+  "background": "#ffffff",
+  "strokes": [
+    { "tool":"pen", "color":"#ff3366", "size":4,
+      "points":[{"x":120,"y":200},{"x":130,"y":210}] }
+  ]
+}</pre>
+
+        <h2 id="storage">Storage (SQLite)</h2>
+        <p>We use <code>better-sqlite3</code> for simple, safe storage:</p>
+        <pre>CREATE TABLE IF NOT EXISTS drawings (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);</pre>
+        <p>
+            Saves are <code>POST /api/drawings</code> (auth) with JSON payload validated by Zod; loads are public via
+            <code>GET /api/drawings/:id</code>.
+        </p>
+
+        <h2 id="auth">Auth (bcrypt + sessions)</h2>
+        <ul>
+            <li>Passwords are hashed with <strong>bcrypt</strong> (no plain text).</li>
+            <li>Sessions via <strong>express-session</strong> set an HTTP-only cookie.</li>
+            <li><code>/room/:id</code> redirects to Home if you’re not logged in.</li>
+            <li><code>/auth/me</code> returns <code>{ authenticated, username }</code> with
+                <code>Cache-Control: no-store</code> to avoid stale reads.</li>
+        </ul>
+        <div class="callout warn">
+            For simultaneous demos on one machine, use different browser profiles or different hosts
+            (<code>localhost</code> vs <code>127.0.0.1</code>) to keep cookies separate.
+        </div>
+
+        <h2 id="api">API (with curl examples)</h2>
+        <div class="api">
+            <p><span class="pill">GET</span> <code>/auth/me</code></p>
+            <pre>curl -i http://localhost:3000/auth/me</pre>
+            <p><span class="pill">POST</span> <code>/auth/register</code> <em>{username,password}</em></p>
+            <pre>curl -i -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"secret"}'</pre>
+            <p><span class="pill">POST</span> <code>/api/drawings</code> <em>(auth)</em></p>
+            <pre>curl -i -X POST http://localhost:3000/api/drawings \
+  -H "Content-Type: application/json" \
+  -d '{"title":"demo","size":{"w":1200,"h":720},"background":"#fff","strokes":[]}'</pre>
+        </div>
+
+        <h2 id="flow">End-to-End Flow (Data & Events)</h2>
+        <pre>
+User draws ─┐          pointerup           ┌─ ystrokes.push(stroke) ─ Sync ─┐
+            ├─ local preview  ─────────────┤                                 │
+            └─ awareness cursor updates ───┤                                 │
+                                           ▼                                 ▼
+                                     Yjs Doc (client)               Yjs Doc (other clients)
+                                           │                                 │
+                                           └───────── WS messages ───────────┘</pre>
+
+        <h2 id="build-it">Build It From Scratch (Step-By-Step)</h2>
+        <ol>
+            <li><strong>Scaffold</strong>
+                <pre>npm init -y
+npm i express express-session better-sqlite3 bcryptjs zod ws yjs y-protocols lib0
+npm i -D nodemon</pre>
+            </li>
+            <li><strong>Create server</strong> (<code>server.js</code>): static <code>public/</code>, sessions, SQLite,
+                routes, WS upgrade, Yjs rooms.</li>
+            <li><strong>Make pages</strong> (<code>index.html</code>, <code>room.html</code>, <code>manual.html</code>)
+                and <code>styles.css</code>.</li>
+            <li><strong>Implement client</strong> (<code>app.js</code>): Yjs provider, strokes array, presence cursors,
+                responsive pointer mapping.</li>
+            <li><strong>Run</strong>: <code>npm run start</code> → <a href="/">http://localhost:3000/</a></li>
+        </ol>
+
+        <h2 id="security">Security & Production Notes</h2>
+        <ul>
+            <li>Use a real user DB (PostgreSQL/MySQL) for accounts; store users server-side, not in memory.</li>
+            <li>Rotate <code>session.secret</code>; use secure cookies (<code>secure:true</code>) behind HTTPS.</li>
+            <li>Rate limit auth endpoints; add CSRF protection if you expand forms.</li>
+            <li>Validate all payloads (Zod used here) and sanitize outputs.</li>
+        </ul>
+
+        <h2 id="troubleshoot">Troubleshooting</h2>
+        <ul>
+            <li><strong>“Join room” disabled</strong> → Log in first on Home.</li>
+            <li><strong>401 on save</strong> → Log in; reopen the room.</li>
+            <li><strong>Peers not showing</strong> → Hard refresh both tabs (<span class="kbd">Ctrl/Cmd</span> + <span
+                    class="kbd">Shift</span> + <span class="kbd">R</span>).</li>
+            <li><strong>Both tabs are same user</strong> → Use <code>localhost</code> vs <code>127.0.0.1</code> or
+                incognito/another browser.</li>
+        </ul>
+
+        <h2 id="faq">FAQ</h2>
+        <p><strong>Q:</strong> Why fixed internal canvas size?<br>
+            <strong>A:</strong> It guarantees identical coordinates across collaborators; CSS scales it visually.
+        </p>
+        <p><strong>Q:</strong> How to add eraser/undo?<br>
+            <strong>A:</strong> Model eraser strokes or record inverse ops; filter them on redraw; keep history in Yjs.
+        </p>
+        <p><strong>Q:</strong> Can I host the Yjs server elsewhere?<br>
+            <strong>A:</strong> Yes — point the <code>WebsocketProvider</code> to a hosted y-websocket; protocol remains
+            compatible.
+        </p>
+    </main>
+
+    <footer class="footer">
+        <span class="muted small">© dKin Canvas Lab — Manual</span>
+        <a class="btn" href="/">Back to Home</a>
+    </footer>
+</body>
+
+</html>

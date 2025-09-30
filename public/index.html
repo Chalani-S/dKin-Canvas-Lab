@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>dKin Canvas Lab · Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+
+<body class="landing">
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>dKin Canvas Lab</h1>
+      <p>Collaborative drawing · Save & Load · SQLite · Auth</p>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <div class="card">
+    <div id="loginBanner" class="banner" hidden></div>
+
+    <!-- Header row with Manual + API Docs buttons and the login badge -->
+    <div class="row space-between">
+      <h2 class="no-m">Get started</h2>
+      <div class="row" style="gap:.4rem;">
+        <a class="btn" href="/manual.html" target="_blank" title="Open the user & developer manual">Manual</a>
+        <span id="homeBadge" class="badge">Not logged in</span>
+      </div>
+    </div>
+
+    <!-- Friendly help banner -->
+    <div class="banner" style="margin-top:.5rem;">
+      New here? Read the <a href="/manual.html" target="_blank"><strong>Manual</strong></a> for a quick tour, setup
+      tips,
+      and a step-by-step “How it’s built” guide.
+    </div>
+
+    <!-- Step 1: Auth -->
+    <div class="step">
+      <div class="step-head">
+        <div class="step-circle">1</div>
+        <div>
+          <div class="step-title">Sign in / Register</div>
+          <div class="muted small">You need an account to join and save drawings.</div>
+        </div>
+      </div>
+
+      <div id="authForm" class="row mt">
+        <input id="u" class="input" placeholder="username" />
+        <input id="p" class="input" placeholder="password" type="password" />
+        <button id="reg" class="btn">Register</button>
+        <button id="login" class="btn">Login</button>
+        <button id="logout" class="btn">Logout</button>
+      </div>
+
+      <div id="authDone" class="auth-done" hidden>
+        <span class="check"></span>
+        <span id="authOKMsg"></span>
+      </div>
+
+      <p class="muted small" id="authMsg"></p>
+    </div>
+
+    <hr />
+
+    <!-- Step 2: Join -->
+    <div class="step">
+      <div class="step-head">
+        <div class="step-circle">2</div>
+        <div>
+          <div class="step-title">Join a room</div>
+          <div class="muted small">Pick a room ID and share it with a friend.</div>
+        </div>
+      </div>
+
+      <div class="row mt">
+        <input id="room" class="input" placeholder="e.g. butterflies" disabled />
+        <button id="go" class="btn primary" disabled>Join room</button>
+        <span id="joinHint" class="hint lock">🔒 Login first to enable joining</span>
+      </div>
+
+      <div class="row chips" id="suggestions"></div>
+
+      <p class="muted small" style="margin-top:.5rem;">
+        <strong>Tip:</strong> to test two users in the same browser, open one at
+        <a href="http://localhost:3000/" target="_blank">localhost</a> and the other at
+        <a href="http://127.0.0.1:3000/" target="_blank">127.0.0.1</a>. They keep separate cookies, so you can be logged
+        in as two different users at once.
+      </p>
+    </div>
+
+    <hr />
+    <h3>Active Rooms (live)</h3>
+    <div id="rooms" class="rooms"></div>
+  </div>
+
+  <script>
+    const qs = k => new URLSearchParams(location.search).get(k) || "";
+    const $ = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+
+    const toast = msg => {
+      const el = $('#toast');
+      el.textContent = msg; el.hidden = false;
+      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      setTimeout(() => el.hidden = true, 1800);
+    };
+
+    const banner = $('#loginBanner');
+    const homeBadge = $('#homeBadge');
+    const authMsg = $('#authMsg');
+    const authOKMsg = $('#authOKMsg');
+
+    const roomInput = $('#room');
+    const joinBtn = $('#go');
+    const joinHint = $('#joinHint');
+    const authForm = $('#authForm');
+    const authDone = $('#authDone');
+
+    function setLastRoom(id) { if (id) localStorage.setItem('lastRoom', id); }
+    const getLastRoom = () => localStorage.getItem('lastRoom') || "";
+    const goToRoom = id => location.href = '/room/' + encodeURIComponent(id);
+
+    async function post(url, body) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+    async function me() {
+      const r = await fetch('/auth/me', { credentials: 'same-origin', cache: 'no-store' });
+      return await r.json();
+    }
+
+    let authed = false;
+    function setJoinEnabled(enabled) {
+      authed = !!enabled;
+      roomInput.disabled = !enabled;
+      joinBtn.disabled = !enabled;
+      joinHint.style.display = enabled ? 'none' : 'inline';
+      roomInput.classList.toggle('disabled', !enabled);
+      joinBtn.classList.toggle('disabled', !enabled);
+    }
+    async function refreshBadge() {
+      const m = await me();
+      if (m.authenticated) {
+        homeBadge.textContent = `Logged in as ${m.username}`;
+        homeBadge.className = 'badge on';
+        setJoinEnabled(true);
+        authForm.style.opacity = .4;
+        $$('#authForm .input, #authForm .btn').forEach(el => el.disabled = true);
+        authOKMsg.textContent = `You’re logged in as ${m.username}.`;
+        authDone.hidden = false;
+      } else {
+        homeBadge.textContent = 'Not logged in';
+        homeBadge.className = 'badge';
+        setJoinEnabled(false);
+        authForm.style.opacity = 1;
+        $$('#authForm .input, #authForm .btn').forEach(el => el.disabled = false);
+        authDone.hidden = true;
+      }
+    }
+
+    async function loadRooms() {
+      const r = await fetch('/api/rooms', { credentials: 'same-origin', cache: 'no-store' });
+      const rooms = await r.json().catch(() => []);
+      const parent = $('#rooms');
+      parent.innerHTML = '';
+      rooms.forEach(room => {
+        const div = document.createElement('div');
+        div.className = 'room-card';
+        const h = document.createElement('div');
+        h.className = 'room-head';
+        h.textContent = `#${room.name}`;
+        const body = document.createElement('div');
+        body.className = 'room-peers';
+        room.peers.forEach(p => {
+          const tag = document.createElement('span');
+          tag.className = 'peer-tag';
+          tag.textContent = p.name;
+          tag.style.borderColor = p.color;
+          body.appendChild(tag);
+        });
+        div.appendChild(h); div.appendChild(body); parent.appendChild(div);
+      });
+    }
+
+    function seedSuggestions() {
+      const sug = $('#suggestions');
+      const presets = ['studio', 'sketch', 'ideas', 'class', 'demo', 'playground']
+        .map(x => x + '-' + Math.floor(Math.random() * 999));
+      sug.innerHTML = '';
+      presets.forEach(id => {
+        const b = document.createElement('button');
+        b.className = 'chip'; b.textContent = id;
+        b.onclick = () => { if (!authed) { toast('Login first, then Join'); return; } roomInput.value = id; setLastRoom(id); };
+        sug.appendChild(b);
+      });
+    }
+
+    (function init() {
+      const needLogin = qs('needLogin') === '1';
+      const qsRoom = (qs('room') || getLastRoom()).trim();
+      if (qsRoom) { roomInput.value = qsRoom; setLastRoom(qsRoom); }
+      if (needLogin) {
+        banner.hidden = false;
+        banner.textContent = `Please log in to join room “${qsRoom || '…'}”.`;
+      }
+
+      joinBtn.addEventListener('click', () => {
+        if (!authed) { toast('Please login first'); return; }
+        const id = (roomInput.value || '').trim();
+        if (!id) return toast('Enter a room id');
+        setLastRoom(id);
+        goToRoom(id);
+      });
+      roomInput.addEventListener('keydown', e => e.key === 'Enter' && joinBtn.click());
+
+      // Auth controls
+      document.getElementById('reg').onclick = async () => {
+        const username = document.getElementById('u').value.trim();
+        const password = document.getElementById('p').value;
+        if (!username || !password) { authMsg.textContent = 'Enter username & password'; return; }
+        try {
+          await post('/auth/register', { username, password });
+          const m = await me();
+          authMsg.textContent = m.authenticated ? `Registered. Logged in as ${m.username}.` : 'Registered.';
+          await refreshBadge();
+        } catch (e) { authMsg.textContent = e.message; }
+      };
+      const doLogin = async () => {
+        const username = document.getElementById('u').value.trim();
+        const password = document.getElementById('p').value;
+        if (!username || !password) { authMsg.textContent = 'Enter username & password'; return; }
+        try {
+          await post('/auth/login', { username, password });
+          const m = await me();
+          authMsg.textContent = m.authenticated ? `Logged in as ${m.username}.` : 'Logged in.';
+          await refreshBadge();
+        } catch (e) { authMsg.textContent = e.message; }
+      };
+      document.getElementById('login').onclick = doLogin;
+      ['u', 'p'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+      });
+      document.getElementById('logout').onclick = async () => {
+        try { await post('/auth/logout', {}); authMsg.textContent = 'Logged out.'; await refreshBadge(); }
+        catch (e) { authMsg.textContent = e.message; }
+      };
+
+      seedSuggestions();
+      refreshBadge();
+      loadRooms();
+      setInterval(loadRooms, 5000);
+    })();
+  </script>
+</body>
+
+</html>

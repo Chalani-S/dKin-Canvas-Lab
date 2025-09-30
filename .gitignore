@@ -1,0 +1,18 @@
+cat > .gitignore << 'EOF'
+# macOS
+.DS_Store
+
+# Node / web
+node_modules/
+dist/
+build/
+.env
+*.log
+
+# Editors
+.vscode/
+.idea/
+EOF
+
+# remove any already-created .DS_Store files
+find . -name .DS_Store -print -delete
